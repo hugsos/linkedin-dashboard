@@ -533,7 +533,7 @@ function visOptHtml(p, key, label) {
   if (!path) return '';
   const pid = esc(p.id);
   const sel = p.visual === path ? ' vis-sel' : '';
-  return `<div class="vis-opt${sel}" id="vis-opt-${pid}-${key}" onclick="selectVisual('${pid}', ${JSON.stringify(path)})">
+  return `<div class="vis-opt${sel}" id="vis-opt-${pid}-${key}" data-id="${pid}" data-path="${esc(path)}" onclick="selectVisual(this.dataset.id, this.dataset.path)">
     <div class="vis-thumb-wrap" id="vis-thumb-${pid}-${key}">
       <img class="vis-img" src="" alt="" style="display:none">
     </div>
@@ -542,6 +542,18 @@ function visOptHtml(p, key, label) {
 }
 
 async function selectVisual(id, path) {
+  // Immediate DOM feedback — don't wait for API
+  document.querySelectorAll(`[id^="vis-opt-${id}-"]`).forEach(el => {
+    el.classList.toggle('vis-sel', el.dataset.path === path);
+    const lbl = el.querySelector('.vis-lbl');
+    if (lbl) lbl.style.color = el.dataset.path === path ? 'var(--blue)' : '';
+  });
+  const wrap = document.getElementById(`livis-${id}`);
+  if (wrap) {
+    wrap.style.display = path ? 'block' : 'none';
+    if (path) resolveImg(wrap.querySelector('img'), path);
+  }
+
   sync('load', 'maj...');
   try {
     const res = await ghGet(PATHS.drafts);
@@ -551,7 +563,6 @@ async function selectVisual(id, path) {
     list[i].visual = path;
     await ghPut(PATHS.drafts, list, res.sha, `🖼️ Visuel — ${id}`);
     $.drafts = { data: list, sha: res.sha };
-    renderPosts();
     sync('ok', 'synced'); toast('<i class="fa-solid fa-check"></i> Visuel sélectionné', 'ok');
   } catch(e) { sync('err', 'erreur'); toast(e.message, 'bad'); }
 }
