@@ -496,7 +496,10 @@ function renderPosts() {
 }
 
 function formatContent(text) {
-  return esc(text)
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>')
     .replace(/#(\w+)/g, '<span class="li-hashtag">#$1</span>');
 }
