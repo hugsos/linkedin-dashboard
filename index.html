@@ -320,8 +320,11 @@
     .vis-add { color: var(--text-3); font-size: 16px; line-height: 1; z-index: 1; }
     .vis-lbl { display: block; font-size: 9px; font-weight: 600; text-align: center; color: var(--text-3); padding: 3px 2px; letter-spacing: .04em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .vis-sel .vis-lbl { color: var(--blue); }
-    .vis-prev { margin-top: 8px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: none; }
-    .vis-prev img { width: 100%; display: block; max-height: 180px; object-fit: cover; }
+    /* ── LinkedIn card image + reactions ─────────────────────── */
+    .li-vis-wrap { display: none; }
+    .li-vis-wrap img { width: 100%; display: block; }
+    .li-reactions { display: flex; border-top: 1px solid #e0e0e0; padding: 2px 4px; }
+    .li-react-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; height: 40px; background: none; border: none; color: #666; font-size: 13px; font-weight: 600; cursor: default; border-radius: 4px; font-family: var(--font); }
   </style>
 </head>
 <body>
@@ -520,8 +523,8 @@ function loadVisuals(p) {
     if (img) resolveImg(img, path);
   }
   if (cur) {
-    const prev = document.getElementById(`vis-prev-${pid}`);
-    if (prev) { prev.style.display = 'block'; resolveImg(prev.querySelector('img'), cur); }
+    const wrap = document.getElementById(`livis-${pid}`);
+    if (wrap) { wrap.style.display = 'block'; resolveImg(wrap.querySelector('img'), cur); }
   }
 }
 
@@ -665,6 +668,15 @@ function postCard(p) {
       <div class="li-body clamp" id="libody-${pid}">${formatContent(p.content||'')}</div>
       <button class="li-seemore" id="lism-${pid}" onclick="liExpand('${pid}')">...voir plus</button>
     </div>
+    <div class="li-vis-wrap" id="livis-${pid}" style="${p.visual ? 'display:block' : 'display:none'}">
+      <img src="" alt="">
+    </div>
+    <div class="li-reactions">
+      <button class="li-react-btn"><i class="fa-regular fa-thumbs-up"></i> J'aime</button>
+      <button class="li-react-btn"><i class="fa-regular fa-comment"></i> Commenter</button>
+      <button class="li-react-btn"><i class="fa-solid fa-repeat" style="font-size:11px"></i> Republier</button>
+      <button class="li-react-btn"><i class="fa-regular fa-paper-plane"></i> Envoyer</button>
+    </div>
     ${fbBadge}
   </div>
   <div class="post-acts" id="pacts-${pid}">
@@ -689,9 +701,6 @@ function postCard(p) {
         </div>
         <span class="vis-lbl">Custom</span>
       </div>
-    </div>
-    <div class="vis-prev" id="vis-prev-${pid}">
-      <img src="" alt="">
     </div>
   </div>
   <input type="file" accept="image/*" id="vis-file-${pid}" style="display:none" onchange="handleCustom('${pid}', this)">
