@@ -307,6 +307,21 @@
     .star.on { color: #f5a623; }
     .fb-ta { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 13.5px; line-height: 1.5; padding: 10px 12px; resize: none; min-height: 80px; outline: none; transition: border-color .2s; margin-bottom: 8px; }
     .fb-ta:focus { border-color: var(--blue); }
+
+    /* ── Visual picker ───────────────────────────────────────────── */
+    .vis-section { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
+    .vis-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 7px; }
+    .vis-row { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .vis-opt { flex-shrink: 0; width: 70px; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--border); overflow: hidden; transition: border-color .15s, transform .1s; -webkit-tap-highlight-color: transparent; }
+    .vis-opt:active { transform: scale(.94); }
+    .vis-sel { border-color: var(--blue); }
+    .vis-thumb-wrap { width: 100%; height: 46px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .vis-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .vis-add { color: var(--text-3); font-size: 16px; line-height: 1; z-index: 1; }
+    .vis-lbl { display: block; font-size: 9px; font-weight: 600; text-align: center; color: var(--text-3); padding: 3px 2px; letter-spacing: .04em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vis-sel .vis-lbl { color: var(--blue); }
+    .vis-prev { margin-top: 8px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: none; }
+    .vis-prev img { width: 100%; display: block; max-height: 180px; object-fit: cover; }
   </style>
 </head>
 <body>
@@ -380,6 +395,7 @@ const PATHS   = { drafts: 'data/drafts.json', faq: 'data/faq.json', answers: 'da
 let pat = localStorage.getItem('gh_pat') || '';
 let $  = {};   // cache: { drafts:{data,sha}, faq:{data,sha}, answers:{data,sha} }
 let _ratings = {};
+const _imgCache = {};
 
 // ── Bootstrap ────────────────────────────────────────────────────────────
 function boot() {
@@ -470,6 +486,117 @@ function sync(state, txt) {
   document.getElementById('sync-lbl').textContent = txt;
 }
 
+// ── Visual picker ────────────────────────────────────────────────────────
+async function resolveImg(el, path) {
+  if (!path) return;
+  const norm = path.replace(/\\/g, '/');
+  if (_imgCache[norm]) { el.src = _imgCache[norm]; el.style.display = ''; _hideAdd(el); return; }
+  try {
+    const r = await fetch(API_BASE + norm, {
+      headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github.raw+v1' }
+    });
+    if (!r.ok) return;
+    const blob = await r.blob();
+    _imgCache[norm] = URL.createObjectURL(blob);
+    el.src = _imgCache[norm]; el.style.display = ''; _hideAdd(el);
+  } catch {}
+}
+
+function _hideAdd(img) {
+  const add = img.parentElement?.querySelector('.vis-add');
+  if (add) add.style.display = 'none';
+}
+
+function loadVisuals(p) {
+  const pid = p.id;
+  const vis = p.visuals || {};
+  const cur = p.visual  || '';
+  for (const key of ['screenshot', 'og_image', 'stock', 'custom']) {
+    const path = vis[key] || '';
+    if (!path) continue;
+    const wrap = document.getElementById(`vis-thumb-${pid}-${key}`);
+    if (!wrap) continue;
+    const img = wrap.querySelector('.vis-img');
+    if (img) resolveImg(img, path);
+  }
+  if (cur) {
+    const prev = document.getElementById(`vis-prev-${pid}`);
+    if (prev) { prev.style.display = ''; resolveImg(prev.querySelector('img'), cur); }
+  }
+}
+
+function visOptHtml(p, key, label) {
+  const path = (p.visuals || {})[key] || '';
+  if (!path) return '';
+  const pid = esc(p.id);
+  const sel = p.visual === path ? ' vis-sel' : '';
+  return `<div class="vis-opt${sel}" id="vis-opt-${pid}-${key}" onclick="selectVisual('${pid}', ${JSON.stringify(path)})">
+    <div class="vis-thumb-wrap" id="vis-thumb-${pid}-${key}">
+      <img class="vis-img" src="" alt="" style="display:none">
+    </div>
+    <span class="vis-lbl">${label}</span>
+  </div>`;
+}
+
+async function selectVisual(id, path) {
+  sync('load', 'maj...');
+  try {
+    const res = await ghGet(PATHS.drafts);
+    const list = res.data;
+    const i = list.findIndex(d => d.id === id);
+    if (i < 0) throw new Error('Draft introuvable');
+    list[i].visual = path;
+    await ghPut(PATHS.drafts, list, res.sha, `🖼️ Visuel — ${id}`);
+    $.drafts = { data: list, sha: res.sha };
+    renderPosts();
+    sync('ok', 'synced'); toast('<i class="fa-solid fa-check"></i> Visuel sélectionné', 'ok');
+  } catch(e) { sync('err', 'erreur'); toast(e.message, 'bad'); }
+}
+
+function triggerCustom(id) { document.getElementById(`vis-file-${id}`)?.click(); }
+
+async function handleCustom(id, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const dest = `data/images/custom-${id}.${ext}`;
+  sync('load', 'upload...');
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = e => res(e.target.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    let existingSha = null;
+    try {
+      const chk = await fetch(API_BASE + dest, { headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json' } });
+      if (chk.ok) { const j = await chk.json(); existingSha = j.sha; }
+    } catch {}
+    const body = { message: `📸 Image custom — ${id}`, content: b64 };
+    if (existingSha) body.sha = existingSha;
+    const up = await fetch(API_BASE + dest, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!up.ok) { const e = await up.json(); throw new Error(e.message || 'Upload échoué'); }
+    const res  = await ghGet(PATHS.drafts);
+    const list = res.data;
+    const i    = list.findIndex(d => d.id === id);
+    if (i < 0) throw new Error('Draft introuvable');
+    if (!list[i].visuals) list[i].visuals = { screenshot: '', og_image: '', stock: '', custom: '' };
+    list[i].visuals.custom = dest;
+    list[i].visual         = dest;
+    await ghPut(PATHS.drafts, list, res.sha, `🖼️ Image custom — ${id}`);
+    $.drafts = { data: list, sha: res.sha };
+    delete _imgCache[dest];
+    renderPosts();
+    sync('ok', 'synced'); toast('<i class="fa-solid fa-check"></i> Image uploadée', 'ok');
+  } catch(e) { sync('err', 'erreur'); toast(e.message, 'bad'); }
+  input.value = '';
+}
+
 // ── Posts ────────────────────────────────────────────────────────────────
 function renderPosts() {
   document.getElementById('ld-posts').style.display  = 'none';
@@ -492,6 +619,7 @@ function renderPosts() {
     const body = document.getElementById('libody-' + p.id);
     const btn  = document.getElementById('lism-'   + p.id);
     if (body && btn && body.scrollHeight <= body.clientHeight + 1) btn.style.display = 'none';
+    loadVisuals(p);
   }));
 }
 
@@ -518,6 +646,8 @@ function postCard(p) {
   const starsHtml = [1,2,3,4,5].map(n =>
     `<span class="star${currentRating >= n ? ' on' : ''}" onclick="setRating('${pid}',${n})">★</span>`
   ).join('');
+  const customPath = (p.visuals || {}).custom || '';
+  const customSel  = customPath && p.visual === customPath ? ' vis-sel' : '';
 
   return `<div class="post-wrap" id="pwrap-${pid}">
   <span class="status-pill ${pillCls}">${pillTxt}</span>
@@ -546,6 +676,25 @@ function postCard(p) {
     <button class="pact pact-note"   onclick="toggleFeedback('${pid}')"><i class="fa-solid fa-star"></i></button>
     <button class="pact pact-delete" onclick="deletePost('${pid}')"><i class="fa-solid fa-trash"></i></button>
   </div>
+  <div class="vis-section">
+    <div class="vis-label"><i class="fa-regular fa-image"></i>&nbsp;Visuel</div>
+    <div class="vis-row">
+      ${visOptHtml(p, 'screenshot', 'Screenshot')}
+      ${visOptHtml(p, 'og_image', 'Article')}
+      ${visOptHtml(p, 'stock', 'Stock')}
+      <div class="vis-opt${customSel}" id="vis-opt-${pid}-custom" onclick="triggerCustom('${pid}')">
+        <div class="vis-thumb-wrap" id="vis-thumb-${pid}-custom">
+          <img class="vis-img" src="" alt="" style="display:none">
+          <div class="vis-add"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <span class="vis-lbl">Custom</span>
+      </div>
+    </div>
+    <div class="vis-prev" id="vis-prev-${pid}">
+      <img src="" alt="">
+    </div>
+  </div>
+  <input type="file" accept="image/*" id="vis-file-${pid}" style="display:none" onchange="handleCustom('${pid}', this)">
   <div class="edit-panel" id="edit-${pid}">
     <textarea class="edit-ta" id="edit-ta-${pid}">${esc(p.content||'')}</textarea>
     <div class="edit-acts">
