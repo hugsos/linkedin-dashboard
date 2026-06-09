@@ -263,6 +263,50 @@
     .toast.bad { border-color: rgba(204,16,22,.35); color: var(--red); }
 
     .lnk { background: none; border: none; color: var(--blue); font-family: var(--font); font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    /* ── LinkedIn Card ───────────────────────────────────────── */
+    .post-wrap { margin-bottom: 16px; }
+    .post-wrap.gone { animation: out .28s ease forwards; overflow: hidden; }
+    .status-pill { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 100px; margin-bottom: 7px; font-family: var(--mono); }
+    .pill-draft    { background: rgba(0,0,0,.06); color: var(--text-2); }
+    .pill-approved { background: var(--green-dim); color: var(--green); border: 1px solid rgba(5,118,66,.2); }
+    .li-card { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; overflow: hidden; }
+    .li-hdr  { display: flex; align-items: flex-start; padding: 12px 12px 6px; gap: 9px; }
+    .li-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(0,0,0,.08); }
+    .li-meta { flex: 1; min-width: 0; }
+    .li-name { font-size: 15px; font-weight: 700; color: #000; line-height: 1.2; margin-bottom: 1px; }
+    .li-headline { font-size: 12.5px; color: #666; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .li-time { font-size: 11.5px; color: #999; margin-top: 2px; }
+    .li-dots { background: none; border: none; color: #666; font-size: 20px; padding: 0 4px; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; line-height: 1; }
+    .li-body-wrap { padding: 0 12px 12px; }
+    .li-body { font-size: 14px; color: rgba(0,0,0,.9); line-height: 1.5; word-break: break-word; }
+    .li-body.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .li-hashtag { color: #0A66C2; }
+    .li-seemore { background: none; border: none; color: #0A66C2; font-size: 14px; font-weight: 600; cursor: pointer; padding: 3px 0 0; display: block; -webkit-tap-highlight-color: transparent; }
+    .fb-badge { padding: 0 12px 10px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .post-acts { display: flex; gap: 6px; margin-top: 8px; }
+    .pact { flex: 1; height: 36px; border-radius: 8px; border: none; font-family: var(--font); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent; }
+    .pact:active:not(:disabled) { transform: scale(.95); }
+    .pact:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .pact-approve  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(5,118,66,.2); }
+    .pact-edit     { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(10,102,194,.2); }
+    .pact-delete   { background: var(--red-dim); color: var(--red); border: 1px solid rgba(204,16,22,.2); }
+    .pact-note     { background: rgba(180,83,9,.08); color: var(--amber); border: 1px solid rgba(180,83,9,.2); }
+    .pact-cancel   { background: rgba(0,0,0,.05); color: var(--text-2); border: 1px solid rgba(0,0,0,.1); }
+    .pact-save     { background: var(--blue); color: #fff; }
+    .pact-unapprove{ background: rgba(0,0,0,.05); color: var(--text-2); border: 1px solid rgba(0,0,0,.1); }
+    .edit-panel { display: none; margin-top: 8px; }
+    .edit-panel.on { display: block; }
+    .edit-ta { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; padding: 11px 13px; resize: none; min-height: 180px; outline: none; transition: border-color .2s; }
+    .edit-ta:focus { border-color: var(--blue); }
+    .edit-acts { display: flex; gap: 6px; margin-top: 6px; }
+    .fb-panel { display: none; margin-top: 8px; }
+    .fb-panel.on { display: block; }
+    .stars-row { display: flex; gap: 4px; justify-content: center; padding: 10px 0 8px; }
+    .star { font-size: 28px; cursor: pointer; color: #d0d0d0; transition: color .1s; -webkit-tap-highlight-color: transparent; user-select: none; line-height: 1; }
+    .star.on { color: #f5a623; }
+    .fb-ta { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 13.5px; line-height: 1.5; padding: 10px 12px; resize: none; min-height: 80px; outline: none; transition: border-color .2s; margin-bottom: 8px; }
+    .fb-ta:focus { border-color: var(--blue); }
   </style>
 </head>
 <body>
@@ -335,6 +379,7 @@ const PATHS   = { drafts: 'data/drafts.json', faq: 'data/faq.json', answers: 'da
 
 let pat = localStorage.getItem('gh_pat') || '';
 let $  = {};   // cache: { drafts:{data,sha}, faq:{data,sha}, answers:{data,sha} }
+let _ratings = {};
 
 // ── Bootstrap ────────────────────────────────────────────────────────────
 function boot() {
@@ -443,39 +488,89 @@ function renderPosts() {
   if (pending.length)  { h += `<div class="sh"><span class="st">À valider</span><span class="sc">${pending.length}</span></div>`;  pending.forEach(p  => { h += postCard(p); }); }
   if (approved.length) { h += `<div class="sh" style="margin-top:${pending.length?'20px':'0'}"><span class="st">Approuvés</span><span class="sc">${approved.length}</span></div>`; approved.forEach(p => { h += postCard(p); }); }
   out.innerHTML = h;
+  requestAnimationFrame(() => live.forEach(p => {
+    const body = document.getElementById('libody-' + p.id);
+    const btn  = document.getElementById('lism-'   + p.id);
+    if (body && btn && body.scrollHeight <= body.clientHeight + 1) btn.style.display = 'none';
+  }));
+}
+
+function formatContent(text) {
+  return esc(text)
+    .replace(/\n/g, '<br>')
+    .replace(/#(\w+)/g, '<span class="li-hashtag">#$1</span>');
 }
 
 function postCard(p) {
-  const sid = (p.id || '').split('-').pop();
+  const pid = esc(p.id);
   const isApproved = p.status === 'APPROVED';
-  return `<div class="card" id="card-${esc(p.id)}" data-id="${esc(p.id)}">
-    <div class="meta">
-      <span class="b b-type">${p.type||'—'}</span>
-      <span class="b b-fmt">${p.format||'—'}</span>
-      <span class="b ${isApproved?'b-ok':'b-draft'}">${isApproved?'Approuvé':'Draft'}</span>
-      <span class="cid">#${sid}</span>
+  const pillCls = isApproved ? 'pill-approved' : 'pill-draft';
+  const pillTxt = isApproved ? 'Approuvé' : 'Draft';
+  const stars = p.rating ? '★'.repeat(p.rating) : '';
+  const fbTxt = p.feedback ? esc(p.feedback.substring(0, 40)) + (p.feedback.length > 40 ? '…' : '') : '';
+  const fbBadge = (stars || fbTxt)
+    ? `<div class="fb-badge"><span style="color:#f5a623">${stars}</span>${fbTxt ? `<span style="color:var(--text-3)">${fbTxt}</span>` : ''}</div>`
+    : '';
+  const currentRating = _ratings[p.id] ?? p.rating ?? 0;
+  const starsHtml = [1,2,3,4,5].map(n =>
+    `<span class="star${currentRating >= n ? ' on' : ''}" onclick="setRating('${pid}',${n})">★</span>`
+  ).join('');
+
+  return `<div class="post-wrap" id="pwrap-${pid}">
+  <span class="status-pill ${pillCls}">${pillTxt}</span>
+  <div class="li-card">
+    <div class="li-hdr">
+      <img class="li-avatar" src="avatar.jpg" alt="Hugo">
+      <div class="li-meta">
+        <div class="li-name">Hugo Bourgeois</div>
+        <div class="li-headline">Développeur Web | Étudiant en BUT Information &amp; Communication | En recherche d'alternance</div>
+        <div class="li-time">1j • 🌐</div>
+      </div>
+      <button class="li-dots"><i class="fa-solid fa-ellipsis"></i></button>
     </div>
-    <div class="body clip" id="body-${esc(p.id)}">${esc(p.content||'')}</div>
-    <button class="more" onclick="expand(this,'body-${esc(p.id)}')">Voir plus</button>
-    <div class="actions">
-      ${!isApproved
-        ? `<button class="btn approve" onclick="setStatus('${esc(p.id)}','APPROVED')"><i class="fa-solid fa-check"></i>Approuver</button>`
-        : `<button class="btn reject"  onclick="setStatus('${esc(p.id)}','DRAFT')"><i class="fa-solid fa-rotate-left"></i>Annuler</button>`
-      }
-      <button class="btn reject" onclick="setStatus('${esc(p.id)}','REJECTED')"><i class="fa-solid fa-xmark"></i>Rejeter</button>
+    <div class="li-body-wrap">
+      <div class="li-body clamp" id="libody-${pid}">${formatContent(p.content||'')}</div>
+      <button class="li-seemore" id="lism-${pid}" onclick="liExpand('${pid}')">...voir plus</button>
     </div>
-  </div>`;
+    ${fbBadge}
+  </div>
+  <div class="post-acts" id="pacts-${pid}">
+    ${!isApproved
+      ? `<button class="pact pact-approve" onclick="setStatus('${pid}','APPROVED')"><i class="fa-solid fa-check"></i></button>`
+      : `<button class="pact pact-unapprove" onclick="setStatus('${pid}','DRAFT')"><i class="fa-solid fa-rotate-left"></i></button>`
+    }
+    <button class="pact pact-edit"   onclick="toggleEdit('${pid}')"><i class="fa-solid fa-pen"></i></button>
+    <button class="pact pact-note"   onclick="toggleFeedback('${pid}')"><i class="fa-solid fa-star"></i></button>
+    <button class="pact pact-delete" onclick="deletePost('${pid}')"><i class="fa-solid fa-trash"></i></button>
+  </div>
+  <div class="edit-panel" id="edit-${pid}">
+    <textarea class="edit-ta" id="edit-ta-${pid}">${esc(p.content||'')}</textarea>
+    <div class="edit-acts">
+      <button class="pact pact-cancel" style="flex:1" onclick="toggleEdit('${pid}')">Annuler</button>
+      <button class="pact pact-save"   style="flex:2" onclick="saveEdit('${pid}')">Sauvegarder</button>
+    </div>
+  </div>
+  <div class="fb-panel" id="fb-${pid}">
+    <div class="stars-row" id="stars-${pid}">${starsHtml}</div>
+    <textarea class="fb-ta" id="fb-ta-${pid}" placeholder="Note pour Claude — ton ressenti sur ce post...">${esc(p.feedback||'')}</textarea>
+    <div class="edit-acts">
+      <button class="pact pact-cancel" style="flex:1" onclick="toggleFeedback('${pid}')">Annuler</button>
+      <button class="pact pact-save"   style="flex:2" onclick="saveFeedback('${pid}')"><i class="fa-solid fa-paper-plane"></i> Envoyer</button>
+    </div>
+  </div>
+</div>`;
 }
 
-function expand(btn, id) {
-  const el = document.getElementById(id);
-  const clipped = el.classList.toggle('clip');
-  btn.textContent = clipped ? 'Voir plus' : 'Voir moins';
+function liExpand(id) {
+  const body = document.getElementById('libody-' + id);
+  const btn  = document.getElementById('lism-'   + id);
+  body.classList.toggle('clamp');
+  btn.textContent = body.classList.contains('clamp') ? '...voir plus' : 'voir moins';
 }
 
 async function setStatus(id, status) {
-  const card = document.getElementById('card-' + id);
-  if (card) card.querySelectorAll('.btn').forEach(b => b.disabled = true);
+  const wrap = document.getElementById('pwrap-' + id);
+  if (wrap) wrap.querySelectorAll('.pact').forEach(b => b.disabled = true);
   sync('load', 'maj...');
   try {
     const res = await ghGet(PATHS.drafts);
@@ -483,18 +578,115 @@ async function setStatus(id, status) {
     const i = list.findIndex(d => d.id === id);
     if (i < 0) throw new Error('Draft introuvable');
     list[i].status = status;
-    if (status === 'APPROVED')  list[i].approved_at  = new Date().toISOString();
-    if (status === 'REJECTED')  list[i].rejected_at  = new Date().toISOString();
+    if (status === 'APPROVED') list[i].approved_at = new Date().toISOString();
+    if (status === 'REJECTED') list[i].rejected_at = new Date().toISOString();
     const msg = { APPROVED:'✅ Approuvé', REJECTED:'❌ Rejeté', DRAFT:'↩️ Remis en draft' }[status] + ` — ${id}`;
     await ghPut(PATHS.drafts, list, res.sha, msg);
     $.drafts = { data: list, sha: res.sha };
-    card?.classList.add('gone');
+    wrap?.classList.add('gone');
     setTimeout(() => { renderPosts(); badges(); }, 300);
     sync('ok', 'synced');
     toast({ APPROVED:'<i class="fa-solid fa-circle-check"></i> Approuvé', REJECTED:'<i class="fa-solid fa-trash"></i> Rejeté', DRAFT:'<i class="fa-solid fa-rotate-left"></i> Remis en draft' }[status], status === 'APPROVED' ? 'ok' : '');
   } catch(e) {
     sync('err', 'erreur'); toast(e.message, 'bad');
-    if (card) card.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    if (wrap) wrap.querySelectorAll('.pact').forEach(b => b.disabled = false);
+  }
+}
+
+// ── Post edit ────────────────────────────────────────────────────────────
+function toggleEdit(id) {
+  const panel = document.getElementById('edit-' + id);
+  const isOpen = !panel.classList.contains('on');
+  panel.classList.toggle('on');
+  document.getElementById('fb-' + id)?.classList.remove('on');
+  if (isOpen) {
+    const draft = ($.drafts?.data || []).find(d => d.id === id);
+    const ta = document.getElementById('edit-ta-' + id);
+    if (draft && ta) ta.value = draft.content || '';
+    ta?.focus();
+  }
+}
+
+async function saveEdit(id) {
+  const ta = document.getElementById('edit-ta-' + id);
+  const newContent = ta?.value?.trim();
+  if (!newContent) { toast('Le contenu ne peut pas être vide', 'bad'); return; }
+  const panel = document.getElementById('edit-' + id);
+  panel.querySelectorAll('button').forEach(b => b.disabled = true);
+  sync('load', 'sauvegarde...');
+  try {
+    const res = await ghGet(PATHS.drafts);
+    const list = res.data;
+    const i = list.findIndex(d => d.id === id);
+    if (i < 0) throw new Error('Draft introuvable');
+    list[i].content   = newContent;
+    list[i].edited_at = new Date().toISOString();
+    await ghPut(PATHS.drafts, list, res.sha, `✏️ Draft modifié — ${id}`);
+    $.drafts = { data: list, sha: res.sha };
+    renderPosts(); badges();
+    sync('ok', 'synced'); toast('<i class="fa-solid fa-check"></i> Modifié', 'ok');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
+    panel.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+}
+
+async function deletePost(id) {
+  if (!confirm('Supprimer ce post définitivement ?')) return;
+  sync('load', 'suppression...');
+  try {
+    const res  = await ghGet(PATHS.drafts);
+    const list = res.data.filter(d => d.id !== id);
+    await ghPut(PATHS.drafts, list, res.sha, `🗑️ Draft supprimé — ${id}`);
+    $.drafts = { data: list, sha: res.sha };
+    const wrap = document.getElementById('pwrap-' + id);
+    wrap?.classList.add('gone');
+    setTimeout(() => { renderPosts(); badges(); renderStatus(); }, 300);
+    sync('ok', 'synced'); toast('<i class="fa-solid fa-trash"></i> Supprimé');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
+  }
+}
+
+// ── Post feedback ─────────────────────────────────────────────────────────
+function toggleFeedback(id) {
+  const panel = document.getElementById('fb-' + id);
+  panel.classList.toggle('on');
+  document.getElementById('edit-' + id)?.classList.remove('on');
+}
+
+function setRating(id, n) {
+  _ratings[id] = n;
+  const row = document.getElementById('stars-' + id);
+  if (!row) return;
+  row.querySelectorAll('.star').forEach((el, i) => el.classList.toggle('on', i < n));
+}
+
+async function saveFeedback(id) {
+  const ta     = document.getElementById('fb-ta-' + id);
+  const note   = ta?.value?.trim() || '';
+  const rating = _ratings[id] ?? ($.drafts?.data || []).find(d => d.id === id)?.rating ?? 0;
+  if (!rating && !note) { toast('Ajoute une note ou une étoile', 'bad'); return; }
+  const panel = document.getElementById('fb-' + id);
+  panel.querySelectorAll('button').forEach(b => b.disabled = true);
+  sync('load', 'envoi...');
+  try {
+    const res  = await ghGet(PATHS.drafts);
+    const list = res.data;
+    const i    = list.findIndex(d => d.id === id);
+    if (i < 0) throw new Error('Draft introuvable');
+    if (rating) list[i].rating      = rating;
+    if (note)   list[i].feedback    = note;
+    list[i].feedback_at = new Date().toISOString();
+    await ghPut(PATHS.drafts, list, res.sha, `⭐ Feedback — ${id}`);
+    $.drafts = { data: list, sha: res.sha };
+    delete _ratings[id];
+    panel.classList.remove('on');
+    renderPosts(); badges();
+    sync('ok', 'synced'); toast('<i class="fa-solid fa-star"></i> Feedback envoyé', 'ok');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
+    panel.querySelectorAll('button').forEach(b => b.disabled = false);
   }
 }
 
