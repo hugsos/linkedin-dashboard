@@ -1150,7 +1150,7 @@ async function submitIdea(triggerNow) {
     await ghPut(filePath, current, sha, '💡 Idée ajoutée : ' + ideaText.slice(0, 50));
 
     if (triggerNow) {
-      await ghPost(`/repos/${REPO}/actions/workflows/generate.yml/dispatches`, { ref: 'main' });
+      await ghPost(`/repos/${REPO}/actions/workflows/generate.yml/dispatches`, { ref: 'main', inputs: { single_idea: 'true' } });
       statusEl.textContent = '✅ Idée ajoutée — génération lancée (~5-10 min). Tu recevras un email.';
     } else {
       statusEl.textContent = '✅ Idée ajoutée — sera traitée lundi prochain.';
