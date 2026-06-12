@@ -369,6 +369,37 @@
     <div class="ld" id="ld-status"><div class="spin"></div> Chargement...</div>
     <div id="status-out" style="display:none"></div>
   </div>
+  <div class="pane" id="pane-ideas">
+    <div class="sh"><span class="st">Nouvelle idée de post</span></div>
+    <div class="card">
+      <textarea
+        id="idea-input"
+        class="edit-ta"
+        placeholder="Ex. : Claude Fable vient de sortir et je veux en parler…"
+        style="min-height:100px"
+      ></textarea>
+      <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+        <button
+          class="pact"
+          onclick="submitIdea(false)"
+          style="flex:1;height:40px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)"
+        >
+          <i class="fa-solid fa-calendar"></i> Lundi prochain
+        </button>
+        <button
+          class="pact"
+          onclick="submitIdea(true)"
+          style="flex:1;height:40px;background:var(--blue);color:#fff;border:none;font-weight:600"
+        >
+          <i class="fa-solid fa-bolt"></i> Générer maintenant
+        </button>
+      </div>
+      <p id="idea-status" style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-3);min-height:1.2em"></p>
+    </div>
+    <div class="div"></div>
+    <div class="sh"><span class="st">Idées en attente</span></div>
+    <div id="ideas-list"></div>
+  </div>
 </main>
 
 <!-- Tab bar -->
@@ -386,6 +417,10 @@
   <button class="tbtn" id="tb-status" onclick="tab('status')">
     <i class="fa-solid fa-chart-simple"></i>
     Statut
+  </button>
+  <button class="tbtn" id="tb-ideas" onclick="tab('ideas'); loadIdeas()">
+    <i class="fa-solid fa-lightbulb"></i>
+    Idées
   </button>
 </nav>
 
@@ -426,6 +461,17 @@ async function ghGet(path) {
   const j = await r.json();
   const txt = decodeURIComponent(escape(atob(j.content.replace(/\n/g, ''))));
   return { data: JSON.parse(txt), sha: j.sha };
+}
+
+async function ghPost(apiPath, body) {
+  const r = await fetch('https://api.github.com' + apiPath, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (r.status === 401) { resetPat(); throw new Error('Token invalide'); }
+  if (!r.ok) throw new Error(`GitHub POST ${r.status}`);
+  return r.status === 204 ? null : r.json();
 }
 
 async function ghPut(path, data, sha, msg) {
@@ -1070,6 +1116,81 @@ function toast(msg, type = '') {
   el.innerHTML = msg; el.className = 'toast on ' + type;
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('on'), 3000);
+}
+
+// ── Ideas ────────────────────────────────────────────────────────────────
+async function submitIdea(triggerNow) {
+  const ideaText = document.getElementById('idea-input').value.trim();
+  const statusEl = document.getElementById('idea-status');
+  if (!ideaText) { statusEl.textContent = 'Saisis une idée avant de soumettre.'; return; }
+
+  statusEl.textContent = '⏳ Envoi en cours…';
+  try {
+    const filePath = 'data/ideas.json';
+    let current = [];
+    let sha = null;
+    try {
+      const fileRes = await ghGet(filePath);
+      current = fileRes.data || [];
+      sha = fileRes.sha;
+    } catch(e) {
+      // File doesn't exist yet — start fresh
+      if (!e.message.includes('404') && !e.message.includes('GitHub 404')) {
+        throw e;
+      }
+    }
+
+    const newIdea = {
+      id: 'idea-' + Date.now(),
+      idea: ideaText,
+      created_at: new Date().toISOString()
+    };
+    current.push(newIdea);
+
+    await ghPut(filePath, current, sha, '💡 Idée ajoutée : ' + ideaText.slice(0, 50));
+
+    if (triggerNow) {
+      await ghPost(`/repos/${REPO}/actions/workflows/generate.yml/dispatches`, { ref: 'main' });
+      statusEl.textContent = '✅ Idée ajoutée — génération lancée (~5-10 min). Tu recevras un email.';
+    } else {
+      statusEl.textContent = '✅ Idée ajoutée — sera traitée lundi prochain.';
+    }
+
+    document.getElementById('idea-input').value = '';
+    loadIdeas();
+  } catch (err) {
+    statusEl.textContent = '❌ Erreur : ' + err.message;
+    console.error(err);
+  }
+}
+
+async function loadIdeas() {
+  const listEl = document.getElementById('ideas-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="ld"><div class="spin"></div> Chargement…</div>';
+  try {
+    const fileRes = await ghGet('data/ideas.json');
+    const ideas = fileRes.data || [];
+    if (ideas.length === 0) {
+      listEl.innerHTML = '<div class="empty"><div class="empty-ico"><i class="fa-regular fa-lightbulb"></i></div><div class="empty-ttl">Aucune idée en attente</div><div class="empty-txt">Les idées soumises apparaîtront ici.</div></div>';
+    } else {
+      listEl.innerHTML = ideas.map(i =>
+        `<div class="card"><div style="display:flex;align-items:flex-start;gap:8px">
+          <i class="fa-solid fa-lightbulb" style="color:var(--amber);margin-top:2px;flex-shrink:0"></i>
+          <div style="flex:1">
+            <div style="font-size:13.5px;line-height:1.55">${esc(i.idea)}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:4px;font-family:var(--mono)">${fmt(i.created_at)}</div>
+          </div>
+        </div></div>`
+      ).join('');
+    }
+  } catch (e) {
+    if (e.message.includes('404') || e.message.includes('GitHub 404')) {
+      listEl.innerHTML = '<div class="empty"><div class="empty-ico"><i class="fa-regular fa-lightbulb"></i></div><div class="empty-ttl">Aucune idée en attente</div><div class="empty-txt">Les idées soumises apparaîtront ici.</div></div>';
+    } else {
+      listEl.innerHTML = `<div class="empty"><div class="empty-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="empty-ttl">Impossible de charger</div><div class="empty-txt">${esc(e.message)}</div></div>`;
+    }
+  }
 }
 
 // ── PWA + Start ──────────────────────────────────────────────────────────
