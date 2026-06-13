@@ -308,6 +308,30 @@
     .fb-ta { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 13.5px; line-height: 1.5; padding: 10px 12px; resize: none; min-height: 80px; outline: none; transition: border-color .2s; margin-bottom: 8px; }
     .fb-ta:focus { border-color: var(--blue); }
 
+    /* ── Regen panel ──────────────────────────────────────────── */
+    .regen-panel { display: none; margin-top: 8px; }
+    .regen-panel.on { display: block; }
+    .regen-inp { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 13.5px; line-height: 1.5; padding: 10px 12px; resize: none; min-height: 58px; outline: none; transition: border-color .2s; margin-bottom: 8px; }
+    .regen-inp:focus { border-color: #7c3aed; }
+    .pact-regen { background: rgba(124,58,237,.08); color: #7c3aed; border: 1px solid rgba(124,58,237,.2); }
+    .pact-regen:hover:not(:disabled) { background: rgba(124,58,237,.14); }
+
+    /* ── A/B tabs ─────────────────────────────────────────────── */
+    .ab-tabs { display: none; margin-top: 8px; }
+    .ab-tabs.on { display: block; }
+    .ab-tab-bar { display: flex; border-radius: 8px 8px 0 0; overflow: hidden; border: 1px solid var(--border); border-bottom: none; }
+    .ab-tab { flex: 1; padding: 8px 12px; font-size: 12.5px; font-weight: 600; text-align: center; cursor: pointer; background: var(--surface-2); color: var(--text-2); border: none; font-family: var(--font); transition: all .15s; }
+    .ab-tab.active { background: var(--surface); color: #7c3aed; }
+    .ab-tab-content { display: none; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 0 0 8px 8px; font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto; }
+    .ab-tab-content.active { display: block; }
+    .memo-row { display: flex; align-items: center; gap: 7px; margin: 9px 0 8px; font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none; }
+    .memo-row input[type=checkbox] { accent-color: var(--blue); width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+    .keep-btn { flex: 1; height: 38px; border-radius: var(--r-sm); border: none; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all .15s; }
+    .keep-btn:active:not(:disabled) { transform: scale(.95); }
+    .keep-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .keep-a { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+    .keep-b { background: var(--blue); color: #fff; }
+
     /* ── Visual picker ───────────────────────────────────────────── */
     .vis-section { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
     .vis-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 7px; }
@@ -349,6 +373,20 @@
     <input class="m-inp" id="pat-in" type="password" placeholder="ghp_..." autocomplete="off" spellcheck="false">
     <div class="m-note">Stocké uniquement dans <code>localStorage</code> de ton navigateur.</div>
     <button class="btn primary" style="width:100%;height:44px" onclick="savePat()">Enregistrer</button>
+  </div>
+</div>
+
+<!-- Anthropic Key Modal -->
+<div class="overlay gone" id="anthro-modal">
+  <div class="modal">
+    <div class="m-title">Clé API Anthropic</div>
+    <div class="m-desc">
+      Entre ta clé API Anthropic pour activer la régénération de posts.<br><br>
+      Crée-la sur <strong>console.anthropic.com</strong> → API Keys.
+    </div>
+    <input class="m-inp" id="anthro-in" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+    <div class="m-note">Stockée uniquement dans <code>localStorage</code> de ton navigateur.</div>
+    <button class="btn primary" style="width:100%;height:44px" onclick="saveAnthropicKey()">Enregistrer</button>
   </div>
 </div>
 
@@ -449,6 +487,7 @@ function savePat() {
   loadAll();
 }
 document.getElementById('pat-in').addEventListener('keydown', e => e.key === 'Enter' && savePat());
+document.getElementById('anthro-in').addEventListener('keydown', e => e.key === 'Enter' && saveAnthropicKey());
 
 // ── GitHub API ───────────────────────────────────────────────────────────
 async function ghGet(path) {
@@ -743,6 +782,7 @@ function postCard(p) {
     }
     <button class="pact pact-edit"   onclick="toggleEdit('${pid}')"><i class="fa-solid fa-pen"></i></button>
     <button class="pact pact-note"   onclick="toggleFeedback('${pid}')"><i class="fa-solid fa-star"></i></button>
+    <button class="pact pact-regen"  onclick="toggleRegen('${pid}')"><i class="fa-solid fa-rotate"></i></button>
     <button class="pact pact-delete" onclick="deletePost('${pid}')"><i class="fa-solid fa-trash"></i></button>
   </div>
   <div class="vis-section">
@@ -774,6 +814,26 @@ function postCard(p) {
     <div class="edit-acts">
       <button class="pact pact-cancel" style="flex:1" onclick="toggleFeedback('${pid}')">Annuler</button>
       <button class="pact pact-save"   style="flex:2" onclick="saveFeedback('${pid}')"><i class="fa-solid fa-paper-plane"></i> Envoyer</button>
+    </div>
+  </div>
+  <div class="regen-panel" id="regen-${pid}">
+    <textarea class="regen-inp" id="regen-inp-${pid}" placeholder="Instruction de style : 'plus court', 'moins technique', 'plus percutant'…"></textarea>
+    <div class="edit-acts">
+      <button class="pact pact-cancel" style="flex:1" onclick="toggleRegen('${pid}')">Annuler</button>
+      <button class="pact pact-regen"  style="flex:2" id="regen-go-${pid}" onclick="submitRegen('${pid}')"><i class="fa-solid fa-rotate"></i> Régénérer</button>
+    </div>
+  </div>
+  <div class="ab-tabs" id="abtabs-${pid}">
+    <div class="ab-tab-bar">
+      <button class="ab-tab" id="abt-a-${pid}" onclick="switchAB('${pid}','a')">A — Original</button>
+      <button class="ab-tab" id="abt-b-${pid}" onclick="switchAB('${pid}','b')">B — Nouvelle version</button>
+    </div>
+    <div class="ab-tab-content" id="abcont-a-${pid}"></div>
+    <div class="ab-tab-content" id="abcont-b-${pid}"></div>
+    <label class="memo-row"><input type="checkbox" id="regen-memo-${pid}"> Mémoriser ce style dans mon persona</label>
+    <div style="display:flex;gap:6px">
+      <button class="keep-btn keep-a" id="keep-a-${pid}" onclick="keepVersion('${pid}','a')"><i class="fa-solid fa-xmark"></i> Garder A</button>
+      <button class="keep-btn keep-b" id="keep-b-${pid}" onclick="keepVersion('${pid}','b')"><i class="fa-solid fa-check"></i> Garder B</button>
     </div>
   </div>
 </div>`;
@@ -816,7 +876,8 @@ function toggleEdit(id) {
   const panel = document.getElementById('edit-' + id);
   const isOpen = !panel.classList.contains('on');
   panel.classList.toggle('on');
-  document.getElementById('fb-' + id)?.classList.remove('on');
+  document.getElementById('fb-'    + id)?.classList.remove('on');
+  document.getElementById('regen-' + id)?.classList.remove('on');
   if (isOpen) {
     const draft = ($.drafts?.data || []).find(d => d.id === id);
     const ta = document.getElementById('edit-ta-' + id);
@@ -870,7 +931,8 @@ async function deletePost(id) {
 function toggleFeedback(id) {
   const panel = document.getElementById('fb-' + id);
   panel.classList.toggle('on');
-  document.getElementById('edit-' + id)?.classList.remove('on');
+  document.getElementById('edit-'  + id)?.classList.remove('on');
+  document.getElementById('regen-' + id)?.classList.remove('on');
 }
 
 function setRating(id, n) {
@@ -905,6 +967,178 @@ async function saveFeedback(id) {
   } catch(e) {
     sync('err', 'erreur'); toast(e.message, 'bad');
     panel.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+}
+
+// ── Anthropic Key ────────────────────────────────────────────────────────
+let anthropicKey = localStorage.getItem('anthropic_key') || '';
+
+function ensureAnthropicKey() {
+  if (anthropicKey) return true;
+  document.getElementById('anthro-modal').classList.remove('gone');
+  return false;
+}
+
+function saveAnthropicKey() {
+  const v = document.getElementById('anthro-in').value.trim();
+  if (!v) return;
+  anthropicKey = v;
+  localStorage.setItem('anthropic_key', v);
+  document.getElementById('anthro-modal').classList.add('gone');
+  toast('<i class="fa-solid fa-key"></i> Clé Anthropic enregistrée', 'ok');
+}
+
+function changeAnthropicKey() {
+  document.getElementById('anthro-in').value = '';
+  document.getElementById('anthro-modal').classList.remove('gone');
+}
+
+async function callAnthropic(model, system, messages) {
+  const msgs = typeof messages === 'string'
+    ? [{ role: 'user', content: messages }]
+    : messages;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model, max_tokens: 2048, system, messages: msgs })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    if (r.status === 401) {
+      anthropicKey = ''; localStorage.removeItem('anthropic_key');
+      document.getElementById('anthro-in').value = '';
+      document.getElementById('anthro-modal').classList.remove('gone');
+      throw new Error('Clé Anthropic invalide');
+    }
+    throw new Error(e.error?.message || `Anthropic ${r.status}`);
+  }
+  const j = await r.json();
+  return j.content[0].text;
+}
+
+const _articleCache = {};
+
+async function fetchArticle(url) {
+  if (!url) return null;
+  if (url in _articleCache) return _articleCache[url];
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) { _articleCache[url] = null; return null; }
+    const html = await r.text();
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.querySelectorAll('script,style,nav,header,footer,aside').forEach(el => el.remove());
+    const text = (div.innerText || div.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 5000);
+    _articleCache[url] = text || null;
+    return _articleCache[url];
+  } catch {
+    _articleCache[url] = null;
+    return null;
+  }
+}
+
+// ── Regen ────────────────────────────────────────────────────────────────
+const _regenData = {};
+
+function toggleRegen(id) {
+  if (!ensureAnthropicKey()) return;
+  const panel = document.getElementById('regen-' + id);
+  const isOpen = !panel.classList.contains('on');
+  panel.classList.toggle('on');
+  document.getElementById('edit-' + id)?.classList.remove('on');
+  document.getElementById('fb-'   + id)?.classList.remove('on');
+  if (isOpen) document.getElementById('regen-inp-' + id)?.focus();
+}
+
+async function submitRegen(id) {
+  if (!ensureAnthropicKey()) return;
+  const instruction = document.getElementById('regen-inp-' + id)?.value?.trim();
+  if (!instruction) { toast('Écris une instruction de style', 'bad'); return; }
+  const draft = ($.drafts?.data || []).find(d => d.id === id);
+  if (!draft) { toast('Draft introuvable', 'bad'); return; }
+
+  const panel = document.getElementById('regen-' + id);
+  panel.querySelectorAll('button').forEach(b => b.disabled = true);
+  sync('load', 'régén...');
+
+  try {
+    let articleCtx = '';
+    if (draft.source_url) {
+      const article = await fetchArticle(draft.source_url);
+      if (article) articleCtx = `\n\nContenu de l'article source :\n${article}`;
+    }
+
+    const system = `Tu es un expert en contenu LinkedIn. Tu reformules des posts LinkedIn en respectant la voix et le style de l'auteur.
+Règles :
+- Respecte la structure du post original (accroche, corps, conclusion, hashtags)
+- Conserve les hashtags originaux
+- N'invente pas de faits absents du post ou de l'article source
+- Réponds UNIQUEMENT avec le nouveau texte du post, sans commentaire ni explication`;
+
+    const userMsg = `Post LinkedIn original :\n${draft.content}${articleCtx}\n\nInstruction de style : ${instruction}\n\nNouvelle version du post :`;
+
+    const variant = await callAnthropic('claude-sonnet-4-6', system, userMsg);
+    _regenData[id] = { original: draft.content, variant, instruction };
+
+    document.getElementById('abcont-a-' + id).textContent = draft.content;
+    document.getElementById('abcont-b-' + id).textContent = variant;
+    panel.classList.remove('on');
+    document.getElementById('abtabs-' + id).classList.add('on');
+    switchAB(id, 'b');
+
+    sync('ok', 'synced');
+    toast('<i class="fa-solid fa-rotate"></i> Nouvelle version générée', 'ok');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
+  } finally {
+    panel.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+}
+
+function switchAB(id, which) {
+  ['a','b'].forEach(t => {
+    const active = t === which;
+    document.getElementById(`abt-${t}-${id}`)?.classList.toggle('active', active);
+    document.getElementById(`abcont-${t}-${id}`)?.classList.toggle('active', active);
+  });
+}
+
+async function keepVersion(id, which) {
+  const d = _regenData[id];
+  if (!d) return;
+  const memo = document.getElementById('regen-memo-' + id)?.checked;
+  const chosenContent = which === 'b' ? d.variant : d.original;
+  const abEl = document.getElementById('abtabs-' + id);
+  abEl.querySelectorAll('button').forEach(b => b.disabled = true);
+  sync('load', 'sauvegarde...');
+
+  try {
+    if (which === 'b') {
+      const res = await ghGet(PATHS.drafts);
+      const list = res.data;
+      const i = list.findIndex(dr => dr.id === id);
+      if (i < 0) throw new Error('Draft introuvable');
+      list[i].content   = chosenContent;
+      list[i].edited_at = new Date().toISOString();
+      await ghPut(PATHS.drafts, list, res.sha, `🔄 Régénéré — ${id}`);
+      $.drafts = { data: list, sha: res.sha };
+    }
+
+    delete _regenData[id];
+    abEl.classList.remove('on');
+    renderPosts(); badges();
+    sync('ok', 'synced');
+    toast(which === 'b'
+      ? `<i class="fa-solid fa-check"></i> Nouvelle version gardée`
+      : '<i class="fa-solid fa-check"></i> Version originale gardée', 'ok');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
+    abEl.querySelectorAll('button').forEach(b => b.disabled = false);
   }
 }
 
@@ -1090,6 +1324,7 @@ function renderStatus() {
   <div class="sh"><span class="st">Compte</span></div>
   <div class="card">
     <div class="irow"><span class="ik">Token GitHub</span><button class="lnk" onclick="changePat()">Modifier</button></div>
+    <div class="irow"><span class="ik">Clé Anthropic</span><button class="lnk" onclick="changeAnthropicKey()" style="${anthropicKey ? '' : 'color:var(--amber)'}">${anthropicKey ? 'Modifier' : 'Configurer'}</button></div>
     <div class="irow" style="border:none"><span class="ik">Rafraîchir</span><button class="lnk" onclick="loadAll()">Sync ↺</button></div>
   </div>`;
 }
