@@ -295,6 +295,24 @@
     .pact-cancel   { background: rgba(0,0,0,.05); color: var(--text-2); border: 1px solid rgba(0,0,0,.1); }
     .pact-save     { background: var(--blue); color: #fff; }
     .pact-unapprove{ background: rgba(0,0,0,.05); color: var(--text-2); border: 1px solid rgba(0,0,0,.1); }
+
+    /* ── Publish-now context menu ────────────────────────────────── */
+    .pub-menu {
+      position: fixed; z-index: 300;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); box-shadow: 0 4px 20px rgba(0,0,0,.14);
+      overflow: hidden; min-width: 178px;
+    }
+    .pub-menu button {
+      display: flex; align-items: center; gap: 9px;
+      width: 100%; padding: 11px 14px;
+      background: none; border: none; border-bottom: 1px solid var(--border);
+      font-family: var(--font); font-size: 13.5px; font-weight: 600; color: var(--text);
+      cursor: pointer; text-align: left; transition: background .12s;
+    }
+    .pub-menu button:last-child { border-bottom: none; }
+    .pub-menu button:hover { background: var(--surface-2); }
+    .pub-menu .pub-now { color: var(--green); }
     .edit-panel { display: none; margin-top: 8px; }
     .edit-panel.on { display: block; }
     .edit-ta { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; padding: 11px 13px; resize: none; min-height: 180px; outline: none; transition: border-color .2s; }
@@ -741,6 +759,10 @@ function renderPosts() {
     const btn  = document.getElementById('lism-'   + p.id);
     if (body && btn && body.scrollHeight <= body.clientHeight + 1) btn.style.display = 'none';
     loadVisuals(p);
+    const abtn = document.getElementById('approve-btn-'   + p.id);
+    const ubtn = document.getElementById('unapprove-btn-' + p.id);
+    if (abtn) attachApprovePress(abtn, p.id, false);
+    if (ubtn) attachApprovePress(ubtn, p.id, true);
   }));
 }
 
@@ -799,8 +821,8 @@ function postCard(p) {
   </div>
   <div class="post-acts" id="pacts-${pid}">
     ${!isApproved
-      ? `<button class="pact pact-approve" onclick="setStatus('${pid}','APPROVED')"><i class="fa-solid fa-check"></i></button>`
-      : `<button class="pact pact-unapprove" onclick="setStatus('${pid}','DRAFT')"><i class="fa-solid fa-rotate-left"></i></button>`
+      ? `<button class="pact pact-approve" id="approve-btn-${pid}"><i class="fa-solid fa-check"></i></button>`
+      : `<button class="pact pact-unapprove" id="unapprove-btn-${pid}"><i class="fa-solid fa-rotate-left"></i></button>`
     }
     <button class="pact pact-edit"   onclick="toggleEdit('${pid}')"><i class="fa-solid fa-pen"></i></button>
     <button class="pact pact-note"   onclick="toggleFeedback('${pid}')"><i class="fa-solid fa-star"></i></button>
@@ -1601,6 +1623,69 @@ async function loadIdeas() {
     } else {
       listEl.innerHTML = `<div class="empty"><div class="empty-ico"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="empty-ttl">Impossible de charger</div><div class="empty-txt">${esc(e.message)}</div></div>`;
     }
+  }
+}
+
+// ── Publish now (long-press on ✓ / ↺) ────────────────────────────────────
+let _lpt = null, _lpFired = false;
+
+function attachApprovePress(el, id, isApproved) {
+  const fire = () => {
+    _lpFired = true;
+    clearTimeout(_lpt); _lpt = null;
+    showPublishMenu(id, el, isApproved);
+  };
+  const start  = () => { _lpFired = false; _lpt = setTimeout(fire, 500); };
+  const cancel = () => { clearTimeout(_lpt); _lpt = null; };
+  el.addEventListener('mousedown',   start);
+  el.addEventListener('touchstart',  start,  { passive: true });
+  el.addEventListener('mouseup',     cancel);
+  el.addEventListener('mouseleave',  cancel);
+  el.addEventListener('touchend',    cancel);
+  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('touchmove',   cancel, { passive: true });
+  el.addEventListener('click', () => {
+    if (_lpFired) { _lpFired = false; return; }
+    setStatus(id, isApproved ? 'DRAFT' : 'APPROVED');
+  });
+}
+
+function showPublishMenu(id, anchor, isApproved) {
+  document.getElementById('pub-menu')?.remove();
+  const rect = anchor.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.id = 'pub-menu'; menu.className = 'pub-menu';
+  menu.innerHTML = (!isApproved
+    ? `<button onclick="closePublishMenu();setStatus('${esc(id)}','APPROVED')"><i class="fa-solid fa-check"></i> Approuver</button>`
+    : '') +
+    `<button class="pub-now" onclick="closePublishMenu();publishNow('${esc(id)}')"><i class="fa-solid fa-bolt"></i> Poster maintenant</button>`;
+  document.body.appendChild(menu);
+  const mh = menu.querySelectorAll('button').length * 43;
+  const top = rect.top - mh - 10;
+  menu.style.top  = Math.max(8, top) + 'px';
+  menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 190)) + 'px';
+  setTimeout(() => document.addEventListener('click', closePublishMenu, { once: true }), 0);
+}
+
+function closePublishMenu() { document.getElementById('pub-menu')?.remove(); }
+
+async function publishNow(id) {
+  if (!confirm('Publier ce post maintenant sur LinkedIn ?\n\nGitHub Actions sera déclenché immédiatement.')) return;
+  sync('load', 'déclenchement...');
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/publish.yml/dispatches`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'main', inputs: { post_id: id } })
+    });
+    if (r.status === 401) { resetPat(); throw new Error('Token invalide'); }
+    if (r.status === 404) throw new Error('Workflow introuvable (vérifier publish.yml)');
+    if (r.status === 422) throw new Error('Token sans droits workflow — ajoute le scope "workflow"');
+    if (!r.ok) throw new Error(`GitHub ${r.status}`);
+    sync('ok', 'lancé');
+    toast('<i class="fa-solid fa-bolt"></i> Publication déclenchée — dans ~1 min', 'ok');
+  } catch(e) {
+    sync('err', 'erreur'); toast(e.message, 'bad');
   }
 }
 
