@@ -1225,6 +1225,8 @@ async function keepVersion(id, which) {
   const memo = document.getElementById('regen-memo-' + id)?.checked;
   const chosenContent = which === 'b' ? d.variant : d.original;
   const abEl = document.getElementById('abtabs-' + id);
+  const clickedBtn = document.getElementById(`keep-${which}-${id}`);
+  if (clickedBtn) clickedBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Sauvegarde…';
   abEl.querySelectorAll('button').forEach(b => b.disabled = true);
   sync('load', 'sauvegarde...');
 
@@ -1243,6 +1245,7 @@ async function keepVersion(id, which) {
     // Style learning — only when keeping version B with memo checked
     if (which === 'b' && memo) {
       try {
+        if (clickedBtn) clickedBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Style…';
         sync('load', 'style...');
         await updatePersona(d.instruction);
         sync('ok', 'synced');
