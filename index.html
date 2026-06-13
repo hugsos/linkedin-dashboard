@@ -1223,17 +1223,79 @@ async function keepVersion(id, which) {
       $.drafts = { data: list, sha: res.sha };
     }
 
+    // Style learning — only when keeping version B with memo checked
+    if (which === 'b' && memo) {
+      try {
+        sync('load', 'style...');
+        await updatePersona(d.instruction);
+        sync('ok', 'synced');
+      } catch(styleErr) {
+        toast('Style non mémorisé : ' + styleErr.message, 'bad');
+      }
+    }
+
     delete _regenData[id];
     abEl.classList.remove('on');
     renderPosts(); badges();
     sync('ok', 'synced');
     toast(which === 'b'
-      ? `<i class="fa-solid fa-check"></i> Nouvelle version gardée`
+      ? `<i class="fa-solid fa-check"></i> Nouvelle version gardée${memo ? ' · Style mémorisé' : ''}`
       : '<i class="fa-solid fa-check"></i> Version originale gardée', 'ok');
   } catch(e) {
     sync('err', 'erreur'); toast(e.message, 'bad');
     abEl.querySelectorAll('button').forEach(b => b.disabled = false);
   }
+}
+
+// ── GitHub raw file helpers (for non-JSON files) ─────────────────────────
+async function ghGetRaw(path) {
+  const r = await fetch(API_BASE + path, {
+    headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json' },
+    cache: 'no-store'
+  });
+  if (r.status === 401) { resetPat(); throw new Error('Token invalide'); }
+  if (!r.ok) throw new Error(`GitHub ${r.status}`);
+  const j = await r.json();
+  const txt = decodeURIComponent(escape(atob(j.content.replace(/\n/g, ''))));
+  return { data: txt, sha: j.sha };
+}
+
+async function ghPutRaw(path, content, sha, msg) {
+  const encoded = btoa(unescape(encodeURIComponent(content)));
+  const body = { message: msg, content: encoded };
+  if (sha) body.sha = sha;
+  const r = await fetch(API_BASE + path, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (r.status === 401) { resetPat(); throw new Error('Token invalide'); }
+  if (r.status === 409) throw new Error('Conflit — rafraîchis et réessaie');
+  if (!r.ok) { const e = await r.json(); throw new Error(e.message || `GitHub ${r.status}`); }
+}
+
+// ── Style learning ────────────────────────────────────────────────────────
+async function updatePersona(instruction) {
+  let currentPersona = '';
+  let sha = null;
+  try {
+    const res = await ghGetRaw('persona.md');
+    currentPersona = res.data;
+    sha = res.sha;
+  } catch(e) {
+    if (!e.message.includes('404')) throw e;
+  }
+
+  const system = currentPersona
+    ? `Tu mets à jour le fichier "persona.md" décrivant le style d'écriture LinkedIn d'un auteur. Intègre intelligemment la nouvelle instruction de style sans redondance ni contradiction. Respecte la structure Markdown existante. Réponds UNIQUEMENT avec le contenu complet du fichier mis à jour, sans commentaire.`
+    : `Tu crées un fichier "persona.md" décrivant le style d'écriture LinkedIn d'un auteur à partir d'une première instruction de style. Réponds UNIQUEMENT avec le contenu du fichier, sans commentaire.`;
+
+  const userMsg = currentPersona
+    ? `Fichier actuel :\n\n${currentPersona}\n\nInstruction à intégrer : "${instruction}"\n\nFichier mis à jour :`
+    : `Instruction de style : "${instruction}"\n\nCrée le fichier persona.md :`;
+
+  const updated = await callAnthropic('claude-sonnet-4-6', system, userMsg);
+  await ghPutRaw('persona.md', updated, sha, `🎨 Style appris — ${instruction.substring(0, 50)}`);
 }
 
 // ── FAQ ──────────────────────────────────────────────────────────────────
