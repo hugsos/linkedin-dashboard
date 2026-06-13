@@ -324,6 +324,7 @@
     .ab-tab.active { background: var(--surface); color: #7c3aed; }
     .ab-tab-content { display: none; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 0 0 8px 8px; font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto; }
     .ab-tab-content.active { display: block; }
+    .regen-prompt-label { margin-bottom: 8px; padding: 8px 11px; border-left: 3px solid #7c3aed; background: #f5f3ff; border-radius: 0 6px 6px 0; font-size: 12.5px; color: #4c1d95; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
     .memo-row { display: flex; align-items: center; gap: 7px; margin: 9px 0 8px; font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none; }
     .memo-row input[type=checkbox] { accent-color: var(--blue); width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
     .keep-btn { flex: 1; height: 38px; border-radius: var(--r-sm); border: none; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all .15s; }
@@ -853,6 +854,7 @@ function postCard(p) {
     </div>
   </div>
   <div class="ab-tabs" id="abtabs-${pid}">
+    <div class="regen-prompt-label" id="regen-prompt-${pid}"></div>
     <div class="ab-tab-bar">
       <button class="ab-tab" id="abt-a-${pid}" onclick="switchAB('${pid}','a')">A — Original</button>
       <button class="ab-tab" id="abt-b-${pid}" onclick="switchAB('${pid}','b')">B — Nouvelle version</button>
@@ -1194,6 +1196,7 @@ Règles :
 
     document.getElementById('abcont-a-' + id).textContent = draft.content;
     document.getElementById('abcont-b-' + id).textContent = variant;
+    document.getElementById('regen-prompt-' + id).textContent = instruction;
     panel.classList.remove('on');
     document.getElementById('abtabs-' + id).classList.add('on');
     switchAB(id, 'b');
